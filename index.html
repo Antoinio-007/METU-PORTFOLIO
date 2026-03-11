@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Antoinio — Portfolio</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #080c12;
+      --surface:     #0d1117;
+      --terminal:    #111620;
+      --chrome:      #1c2030;
+      --border:      #2a2f3e;
+      --border-hi:   #3d4455;
+      --green:       #3dff93;
+      --green-dim:   #1a7a42;
+      --green-glow:  rgba(61,255,147,0.10);
+      --yellow:      #f0c14b;
+      --red:         #ff5f56;
+      --orange:      #ffbd2e;
+      --blue:        #79b8ff;
+      --blue-dim:    #1e3a5f;
+      --comment:     #5c6370;
+      --white:       #cdd9e5;
+      --white-dim:   #8b949e;
+    }
+
+    html, body { width: 100%; height: 100%; overflow: hidden; }
+
+    body {
+      background: var(--bg);
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--white);
+      display: flex; flex-direction: column;
+    }
+
+    /* scanlines */
+    body::before {
+      content: ''; pointer-events: none;
+      position: fixed; inset: 0; z-index: 9999;
+      background: repeating-linear-gradient(
+        0deg, transparent, transparent 2px,
+        rgba(0,0,0,0.055) 2px, rgba(0,0,0,0.055) 4px
+      );
+    }
+
+    /* ambient glow */
+    body::after {
+      content: ''; pointer-events: none;
+      position: fixed; inset: 0; z-index: 0;
+      background:
+        radial-gradient(ellipse 60% 40% at 8% 0%,  rgba(61,255,147,0.04) 0%, transparent 70%),
+        radial-gradient(ellipse 50% 30% at 92% 100%, rgba(121,184,255,0.04) 0%, transparent 70%);
+    }
+
+    /* ── WINDOW ── */
+    .window {
+      position: fixed; inset: 0; z-index: 1;
+      display: flex; flex-direction: column;
+      border: 1px solid var(--border);
+      animation: fadeUp 0.5s ease both;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── TITLEBAR ── */
+    .titlebar {
+      flex-shrink: 0;
+      background: var(--chrome);
+      height: 44px; padding: 0 20px;
+      display: flex; align-items: center; gap: 14px;
+      border-bottom: 1px solid var(--border);
+      user-select: none; position: relative;
+    }
+    .dots { display: flex; gap: 8px; }
+    .dot  { width: 13px; height: 13px; border-radius: 50%; }
+    .dot-r { background: #ff5f57; box-shadow: 0 0 6px rgba(255,95,87,.5); }
+    .dot-y { background: #febc2e; box-shadow: 0 0 6px rgba(254,188,46,.5); }
+    .dot-g { background: #28c840; box-shadow: 0 0 6px rgba(40,200,64,.5); }
+    .titlebar-label {
+      position: absolute; left: 50%; transform: translateX(-50%);
+      font-size: 12px; color: var(--comment); letter-spacing: .05em;
+    }
+
+    /* ── APP BODY ── */
+    .app-body {
+      flex: 1; min-height: 0;
+      display: flex; flex-direction: column;
+      background: var(--terminal); overflow: hidden;
+    }
+
+    /* ── NAV TABS ── */
+    .nav-bar {
+      flex-shrink: 0;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 28px;
+      display: flex; align-items: stretch; gap: 2px;
+    }
+    .nav-btn {
+      background: transparent; border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--comment);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px; letter-spacing: .03em;
+      padding: 13px 18px; cursor: pointer;
+      transition: color .2s;
+      position: relative;
+    }
+    .nav-btn::after {
+      content: ''; position: absolute;
+      left: 0; right: 0; bottom: -1px; height: 2px;
+      background: var(--green); opacity: 0; transition: opacity .2s;
+    }
+    .nav-btn:hover   { color: var(--white-dim); }
+    .nav-btn.active  { color: var(--green); }
+    .nav-btn.active::after { opacity: 1; }
+
+    /* ── CONTENT AREA ── */
+    .content-area {
+      flex: 1; min-height: 0;
+      overflow-y: auto; padding: 36px 52px 28px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+
+    /* ── SECTIONS ── */
+    .section { display: none; animation: fadeIn .3s ease both; }
+    .section.active { display: block; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateX(6px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    /* ── PROMPT ── */
+    .prompt-line {
+      display: flex; align-items: baseline; flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+    .ps1-user  { color: var(--green);     font-weight: 700; }
+    .ps1-at    { color: var(--white-dim); }
+    .ps1-host  { color: var(--blue);      font-weight: 700; }
+    .ps1-sep   { color: var(--white-dim); }
+    .ps1-path  { color: var(--yellow); }
+    .ps1-arrow { color: var(--green); margin: 0 8px; }
+    .ps1-cmd   { color: var(--white); }
+
+    /* ── ASCII HERO ── */
+    .hero-ascii {
+      color: var(--green);
+      font-size: clamp(7px, 1.4vw, 12px);
+      line-height: 1.2; margin-bottom: 32px;
+      white-space: pre;
+      text-shadow: 0 0 28px rgba(61,255,147,.38);
+      opacity: .9;
+    }
+
+    /* ── HOME LAYOUT ── */
+    .home-layout {
+      display: flex; gap: 40px; align-items: flex-start;
+      transition: opacity .5s ease;
+    }
+    .photo-block {
+      flex-shrink: 0;
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+    }
+    /* ── PHOTO : modifie le CSS ici ── */
+    #photo {
+      width: 140px; height: 160px;
+      border-radius: 6px;
+      border: 1px solid var(--green-dim);
+      object-fit: cover; object-position: top;
+      display: block;
+      box-shadow:
+        0 0 0 1px rgba(61,255,147,.1),
+        0 0 32px rgba(61,255,147,.12),
+        0 8px 32px rgba(0,0,0,.4);
+    }
+    .photo-label { font-size: 10px; color: var(--comment); letter-spacing: .04em; }
+    .home-info { flex: 1; min-width: 0; }
+
+    /* ── OUTPUT ── */
+    .output-block { margin-bottom: 24px; }
+    .line { margin-bottom: 6px; font-size: 13.5px; line-height: 1.75; }
+    .line.indent { padding-left: 22px; }
+    .line.gap    { margin-bottom: 16px; }
+    .c-green   { color: var(--green); }
+    .c-yellow  { color: var(--yellow); }
+    .c-blue    { color: var(--blue); }
+    .c-red     { color: var(--red); }
+    .c-comment { color: var(--comment); }
+    .c-white   { color: var(--white); }
+
+    /* ── TYPING CURSOR ── */
+    .typing-cursor {
+      display: inline-block; color: var(--green);
+      animation: blink-cur .7s step-end infinite;
+    }
+    @keyframes blink-cur { 0%,100%{opacity:1} 50%{opacity:0} }
+
+    /* ── DIVIDER ── */
+    hr.divider { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+
+    /* ── PROJECT CARDS ── */
+    .project-card {
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 22px 26px; margin-bottom: 16px;
+      position: relative; overflow: hidden;
+      background: rgba(255,255,255,.01);
+      transition: border-color .25s, box-shadow .25s, background .25s;
+    }
+    .project-card::before {
+      content: ''; position: absolute;
+      left: 0; top: 0; bottom: 0; width: 3px;
+      background: linear-gradient(180deg, var(--green), var(--blue));
+      opacity: 0; transition: opacity .25s;
+    }
+    .project-card:hover {
+      border-color: var(--border-hi);
+      background: rgba(61,255,147,.025);
+      box-shadow: 0 0 32px rgba(61,255,147,.05), 0 4px 20px rgba(0,0,0,.3);
+    }
+    .project-card:hover::before { opacity: 1; }
+    .project-title { color: var(--green); font-size: 14px; font-weight: 700; margin-bottom: 8px; }
+    .project-desc  { color: var(--comment); font-size: 12.5px; line-height: 1.8; margin-bottom: 14px; }
+    .tags { display: flex; flex-wrap: wrap; gap: 8px; }
+    .tag {
+      font-size: 11px; padding: 3px 10px; border-radius: 4px;
+      border: 1px solid var(--blue-dim);
+      color: var(--blue); background: rgba(121,184,255,.05);
+    }
+
+    /* ── SKILLS ── */
+    .skills-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(210px,1fr));
+      gap: 14px; margin-top: 16px;
+    }
+    .skill-card {
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 16px 18px; background: rgba(255,255,255,.01);
+      transition: border-color .2s, background .2s, box-shadow .2s;
+    }
+    .skill-card:hover {
+      border-color: var(--green-dim);
+      background: var(--green-glow);
+      box-shadow: 0 0 20px rgba(61,255,147,.05);
+    }
+    .skill-name { font-size: 12.5px; color: var(--yellow); margin-bottom: 10px; }
+    .bar-track  { height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+    .bar-fill   {
+      height: 100%; width: 0; border-radius: 2px;
+      background: linear-gradient(90deg, var(--green-dim), var(--green));
+      transition: width 1s cubic-bezier(.23,1,.32,1);
+      box-shadow: 0 0 8px rgba(61,255,147,.4);
+    }
+
+    /* ── CONTACT ── */
+    .contact-line {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 14px; font-size: 13px;
+    }
+    .contact-icon { color: var(--green); width: 22px; }
+    .contact-val  { color: var(--white); }
+    .contact-val a { color: var(--blue); text-decoration: none; }
+    .contact-val a:hover { color: var(--green); text-decoration: underline; }
+
+    /* ── SHARED TERMINAL BAR ── */
+    .shared-terminal {
+      flex-shrink: 0;
+      background: var(--chrome);
+      border-top: 1px solid var(--border);
+      padding: 10px 28px 14px;
+      position: relative;
+    }
+    .shared-terminal::before {
+      content: ''; position: absolute;
+      top: 0; left: 28px; right: 28px; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(61,255,147,.12), transparent);
+    }
+    .shared-history {
+      max-height: 110px; overflow-y: auto;
+      margin-bottom: 8px;
+      scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+    }
+    .history-entry { margin-bottom: 3px; }
+    .hist-cmd { color: var(--white-dim); font-size: 12.5px; }
+    .hist-out { color: var(--green);     font-size: 12.5px; padding-left: 16px; white-space: pre-wrap; }
+    .hist-err { color: var(--red);       font-size: 12.5px; padding-left: 16px; }
+
+    .terminal-input-line { display: flex; align-items: center; }
+    .input-ps1 { white-space: nowrap; font-size: 12.5px; }
+    #termInput {
+      flex: 1; background: transparent;
+      border: none; outline: none;
+      color: var(--white);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12.5px; caret-color: var(--green);
+      padding-left: 6px;
+    }
+    #termInput::placeholder { color: var(--comment); font-size: 11.5px; }
+
+
+    /* ── CV BUTTON ── */
+    .cv-btn {
+      display: inline-flex; align-items: center; gap: 10px;
+      margin-top: 16px;
+      padding: 9px 20px;
+      border: 1px solid var(--green-dim);
+      border-radius: 5px;
+      color: var(--green);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      text-decoration: none;
+      background: rgba(61,255,147,0.05);
+      transition: background .2s, border-color .2s, box-shadow .2s, color .2s;
+    }
+    .cv-btn:hover {
+      background: rgba(61,255,147,0.12);
+      border-color: var(--green);
+      box-shadow: 0 0 18px rgba(61,255,147,0.15);
+      color: var(--white);
+    }
+    .cv-icon { font-size: 15px; font-weight: 700; }
+
+    @media (max-width: 600px) {
+      .home-layout  { flex-direction: column; align-items: center; }
+      .content-area { padding: 24px 20px 16px; }
+      .nav-btn      { padding: 12px 10px; font-size: 11px; }
+      .shared-terminal { padding: 10px 16px 14px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="window">
+
+  <!-- TITLEBAR -->
+  <div class="titlebar">
+    <div class="dots">
+      <div class="dot dot-r"></div>
+      <div class="dot dot-y"></div>
+      <div class="dot dot-g"></div>
+    </div>
+    <div class="titlebar-label">antoinio@portfolio — zsh</div>
+  </div>
+
+  <!-- APP BODY -->
+  <div class="app-body">
+
+    <!-- NAV -->
+    <div class="nav-bar">
+      <button class="nav-btn active" onclick="switchTab('home',this)">~/home</button>
+      <button class="nav-btn" onclick="switchTab('about',this)">~/about</button>
+      <button class="nav-btn" onclick="switchTab('projects',this)">~/projects</button>
+      <button class="nav-btn" onclick="switchTab('skills',this)">~/skills</button>
+      <button class="nav-btn" onclick="switchTab('contact',this)">~/contact</button>
+    </div>
+
+    <!-- CONTENT -->
+    <div class="content-area" id="contentArea">
+
+      <!-- ══ HOME ══ -->
+      <div id="home" class="section active">
+        <pre class="hero-ascii">
+  █████╗ ███╗   ██╗████████╗ ██████╗ ██╗███╗   ██╗██╗ ██████╗
+ ██╔══██╗████╗  ██║╚══██╔══╝██╔═══██╗██║████╗  ██║██║██╔═══██╗
+ ███████║██╔██╗ ██║   ██║   ██║   ██║██║██╔██╗ ██║██║██║   ██║
+ ██╔══██║██║╚██╗██║   ██║   ██║   ██║██║██║╚██╗██║██║██║   ██║
+ ██║  ██║██║ ╚████║   ██║   ╚██████╔╝██║██║ ╚████║██║╚██████╔╝
+ ╚═╝  ╚═╝╚═╝  ╚═══╝   ╚═╝    ╚═════╝ ╚═╝╚═╝  ╚═══╝╚═╝ ╚═════╝</pre>
+
+        <!-- typing intro -->
+        <div class="prompt-line" id="introPrompt">
+          <span class="ps1-user">antoinio</span>
+          <span class="ps1-at">@</span>
+          <span class="ps1-host">macbook</span>
+          <span class="ps1-sep">:</span>
+          <span class="ps1-path">~</span>
+          <span class="ps1-arrow"> % </span>
+          <span id="typingText"></span><span id="typingCursor" class="typing-cursor">▋</span>
+        </div>
+
+        <!-- home content — hidden until typing done -->
+        <div id="homeContent" style="opacity:0;pointer-events:none;">
+        <div class="home-layout">
+          <div class="photo-block">
+            <!-- Insère ton src ici -->
+            <img id="photo" src="./Assets/Images/Antoinio-pdp.jpeg" alt="Antoinio" />
+            <div class="photo-label">antoinio.jpg</div>
+          </div>
+          <div class="home-info">
+            <div class="prompt-line">
+              <span class="ps1-user">antoinio</span><span class="ps1-at">@</span>
+              <span class="ps1-host">macbook</span><span class="ps1-sep">:</span>
+              <span class="ps1-path">~</span><span class="ps1-arrow"> % </span>
+              <span class="ps1-cmd">whoami</span>
+            </div>
+            <div class="output-block">
+              <div class="line"><span class="c-green">Étudiant en Info — 1ère année</span> &amp; Développeur Web</div>
+              <div class="line c-comment">──────────────────────────────────────</div>
+              <div class="line indent"> Nom:Raharinjatovo Ambinintsoa Antoinio</div>
+              <div class="line indent">📍 Informatique, Année 1</div>
+              <div class="line indent"> 🪜 Parcours , Développement d'Application Internet Intranet</div>
+              <div class="line indent">🚀 En cours de création : <span class="c-yellow">une application web</span></div>
+              <div class="line indent">🛠  Stack : HTML · CSS · JavaScript · Python</div>
+              <div class="line indent">🎯 Objectif : Coder propre. Apprendre sans cesse.</div>
+            </div>
+          </div>
+        </div><!-- /home-layout -->
+          <!-- CV download — à l'intérieur de homeContent -->
+          <div class="home-cv">
+            <div class="prompt-line" style="margin-top:18px;">
+              <span class="ps1-user">antoinio</span><span class="ps1-at">@</span>
+              <span class="ps1-host">macbook</span><span class="ps1-sep">:</span>
+              <span class="ps1-path">~</span><span class="ps1-arrow"> % </span>
+              <span class="ps1-cmd">open cv-antoinio.pdf</span>
+            </div>
+            <a class="cv-btn" href="cv-antoinio.pdf" download>
+              <span class="cv-icon">↓</span> Télécharger mon CV
+            </a>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ══ ABOUT ══ -->
+      <div id="about" class="section">
+        <div class="prompt-line">
+          <span class="ps1-user">antoinio</span><span class="ps1-at">@</span>
+          <span class="ps1-host">macbook</span><span class="ps1-sep">:</span>
+          <span class="ps1-path">~/about</span><span class="ps1-arrow"> % </span>
+          <span class="ps1-cmd">cat about.md</span>
+        </div>
+        <div class="output-block">
+          <div class="line c-yellow"># À propos</div>
+          <div class="line c-comment">---</div>
+          <div class="line gap"></div>
+          <div class="line">Salut — je suis <span class="c-green">Antoinio</span>, étudiant en première année d'informatique</div>
+          <div class="line">passionné par la création de projets sur le web.</div>
+          <div class="line gap"></div>
+          <div class="line">Je me suis lancé dans la programmation pour transformer des idées</div>
+          <div class="line">en logiciels concrets et fonctionnels. Je me concentre actuellement</div>
+          <div class="line">sur le développement web — apprendre les fondamentaux, écrire</div>
+          <div class="line">du code de plus en plus propre, et comprendre comment tout s'articule.</div>
+          <div class="line gap"></div>
+          <div class="line c-yellow">## En ce moment</div>
+          <div class="line indent">→ <span class="c-blue">J'étudie</span> les structures de données, algorithmes &amp; technologies web</div>
+          <div class="line indent">→ <span class="c-blue">Je construis</span> une application web comme projet principal</div>
+          <div class="line indent">→ <span class="c-blue">J'apprends</span> en faisant — toujours en train de livrer quelque chose</div>
+          <div class="line gap"></div>
+          <div class="line c-yellow">## Centres d'intérêt</div>
+          <div class="line indent c-comment">// au-delà du code</div>
+          <div class="line indent">→ Open source &amp; outils développeurs</div>
+          <div class="line indent">→ UI/UX &amp; systèmes de design</div>
+          <div class="line indent">→ Comment Internet fonctionne vraiment</div>
+        </div>
+      </div>
+
+      <!-- ══ PROJECTS ══ -->
+      <div id="projects" class="section">
+        <div class="prompt-line">
+          <span class="ps1-user">antoinio</span><span class="ps1-at">@</span>
+          <span class="ps1-host">macbook</span><span class="ps1-sep">:</span>
+          <span class="ps1-path">~/projects</span><span class="ps1-arrow"> % </span>
+          <span class="ps1-cmd">ls -la ./projects</span>
+        </div>
+        <div class="line c-comment" style="margin-bottom:20px;">total 3 entrées · trié par : plus récent</div>
+
+        <div class="project-card">
+          <div class="project-title">⚡ Mon Application Web <span class="c-comment" style="font-size:11px;font-weight:400;">[en cours]</span></div>
+          <div class="project-desc">Une application web que je construis comme projet principal de première année. Axée sur une architecture propre, un design responsive et une utilisation concrète de HTML, CSS et JavaScript. En constante évolution — mise à jour régulièrement.</div>
+          <div class="tags">
+            <span class="tag">HTML</span><span class="tag">CSS</span>
+            <span class="tag">JavaScript</span><span class="tag">En cours</span>
+          </div>
+        </div>
+
+        <div class="project-card">
+          <div class="project-title">🧮 Visualiseur d'Algorithmes</div>
+          <div class="project-desc">Un outil interactif pour visualiser les algorithmes de tri étape par étape. Créé pour approfondir ma compréhension de la complexité algorithmique tout en pratiquant la manipulation du DOM et les animations en JS vanilla.</div>
+          <div class="tags">
+            <span class="tag">JavaScript</span><span class="tag">DOM API</span><span class="tag">Algorithmes</span>
+          </div>
+        </div>
+
+        <div class="project-card">
+          <div class="project-title">🐍 Outils CLI Python</div>
+          <div class="project-desc">Une collection de petits utilitaires en ligne de commande écrits en Python — organisateur de fichiers, générateur de mots de passe et gestionnaire de tâches. Idéal pour apprendre les modules de la bibliothèque standard.</div>
+          <div class="tags">
+            <span class="tag">Python</span><span class="tag">CLI</span><span class="tag">argparse</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ SKILLS ══ -->
+      <div id="skills" class="section">
+        <div class="prompt-line">
+          <span class="ps1-user">antoinio</span><span class="ps1-at">@</span>
+          <span class="ps1-host">macbook</span><span class="ps1-sep">:</span>
+          <span class="ps1-path">~/skills</span><span class="ps1-arrow"> % </span>
+          <span class="ps1-cmd">./run_diagnostics.sh</span>
+        </div>
+        <div class="line c-comment" style="margin-bottom:20px;">Analyse des compétences en cours…</div>
+        <div class="skills-grid" id="skillsGrid"></div>
+
+        <hr class="divider" />
+
+        <div class="prompt-line">
+          <span class="ps1-user">antoinio</span><span class="ps1-at">@</span>
+          <span class="ps1-host">macbook</span><span class="ps1-sep">:</span>
+          <span class="ps1-path">~/skills</span><span class="ps1-arrow"> % </span>
+          <span class="ps1-cmd">echo $EN_COURS_APPRENTISSAGE</span>
+        </div>
+        <div class="output-block">
+          <div class="line indent">→ <span class="c-blue">React</span> — composants &amp; gestion d'état</div>
+          <div class="line indent">→ <span class="c-blue">Node.js</span> — back-end &amp; APIs REST</div>
+          <div class="line indent">→ <span class="c-blue">TypeScript</span> — typage statique</div>
+          <div class="line indent">→ <span class="c-blue">SQL</span> — bases de données relationnelles</div>
+        </div>
+      </div>
+
+      <!-- ══ CONTACT ══ -->
+      <div id="contact" class="section">
+        <div class="prompt-line">
+          <span class="ps1-user">antoinio</span><span class="ps1-at">@</span>
+          <span class="ps1-host">macbook</span><span class="ps1-sep">:</span>
+          <span class="ps1-path">~/contact</span><span class="ps1-arrow"> % </span>
+          <span class="ps1-cmd">cat contact.json</span>
+        </div>
+        <div class="output-block" style="margin-top:16px;">
+          <div class="line c-comment">{</div>
+          <div class="contact-line" style="padding-left:24px;">
+            <span class="contact-icon">✉</span>
+            <span class="c-blue">"email"</span><span class="c-white">:</span>
+            <span class="contact-val">&nbsp;<a href="/cdn-cgi/l/email-protection#bddcd3c9d2d4d3d4d2fdd8c5dcd0cdd1d893ded2d0">"<span class="__cf_email__" data-cfemail="ef8e819b8086818680af8a978e829f838ac18c8082">[email&#160;protected]</span>"</a></span>
+          </div>
+          <div class="contact-line" style="padding-left:24px;">
+            <span class="contact-icon">🐙</span>
+            <span class="c-blue">"github"</span><span class="c-white">:</span>
+            <span class="contact-val">&nbsp;<a href="https://github.com/" target="_blank">"github.com/antoinio"</a></span>
+          </div>
+          <div class="contact-line" style="padding-left:24px;">
+            <span class="contact-icon">🔗</span>
+            <span class="c-blue">"linkedin"</span><span class="c-white">:</span>
+            <span class="contact-val">&nbsp;<a href="https://linkedin.com/" target="_blank">"linkedin.com/in/antoinio"</a></span>
+          </div>
+          <div class="contact-line" style="padding-left:24px;">
+            <span class="contact-icon">📍</span>
+            <span class="c-blue">"status"</span><span class="c-white">:</span>
+            <span class="c-green">&nbsp;"Ouvert aux stages &amp; collaborations"</span>
+          </div>
+          <div class="line c-comment">}</div>
+        </div>
+        <hr class="divider" />
+        <div class="prompt-line">
+          <span class="ps1-user">antoinio</span><span class="ps1-at">@</span>
+          <span class="ps1-host">macbook</span><span class="ps1-sep">:</span>
+          <span class="ps1-path">~/contact</span><span class="ps1-arrow"> % </span>
+          <span class="ps1-cmd">echo "N'hésitez pas à me contacter 👋"</span>
+        </div>
+        <div class="output-block" style="margin-top:10px;">
+          <div class="line c-green">N'hésitez pas à me contacter 👋</div>
+        </div>
+      </div>
+
+    </div><!-- /content-area -->
+
+    <!-- ══ SHARED TERMINAL BAR ══ -->
+    <div class="shared-terminal">
+      <div class="shared-history" id="termHistory"></div>
+      <div class="terminal-input-line">
+        <span class="input-ps1">
+          <span class="ps1-user">antoinio</span><span class="ps1-at">@</span>
+          <span class="ps1-host">macbook</span><span class="ps1-sep">:</span>
+          <span class="ps1-path" id="termPath">~</span>
+          <span class="ps1-arrow"> % </span>
+        </span>
+        <input id="termInput" type="text" autocomplete="off" spellcheck="false"
+               placeholder="cd about · cd projects · cd skills · cd contact · help" />
+      </div>
+    </div>
+
+  </div><!-- /app-body -->
+</div><!-- /window -->
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+  const tabs = ['home','about','projects','skills','contact'];
+  let current = 0, currentTab = 'home';
+
+  function switchTab(id, btn) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    btn.classList.add('active');
+    currentTab = id; current = tabs.indexOf(id);
+    if (id === 'skills') animateBars();
+    const pm = { home:'~', about:'~/about', projects:'~/projects', skills:'~/skills', contact:'~/contact' };
+    document.getElementById('termPath').textContent = pm[id] || '~';
+    document.getElementById('contentArea').scrollTop = 0;
+  }
+
+  const termInput   = document.getElementById('termInput');
+  const termHistory = document.getElementById('termHistory');
+  let cmdHistory = [], histIdx = -1;
+
+  const COMMANDS = {
+    help: () => `<span style="color:var(--yellow)">Commandes disponibles :</span>
+<span style="color:var(--green)">  cd &lt;section&gt;</span>   — naviguer  (home · about · projects · skills · contact)
+<span style="color:var(--green)">  ls</span>             — lister les sections
+<span style="color:var(--green)">  whoami</span>         — à propos d'Antoinio
+<span style="color:var(--green)">  pwd</span>            — section actuelle
+<span style="color:var(--green)">  date</span>           — date &amp; heure actuelles
+<span style="color:var(--green)">  echo &lt;texte&gt;</span>  — afficher du texte
+<span style="color:var(--green)">  clear</span>          — effacer le terminal`,
+
+    ls:     () => `<span style="color:var(--blue)">about/</span>   <span style="color:var(--blue)">projects/</span>   <span style="color:var(--blue)">skills/</span>   <span style="color:var(--blue)">contact/</span>`,
+    whoami: () => `<span style="color:var(--green)">Antoinio</span> — Étudiant en Info 1ère année &amp; Développeur Web\n  📍 Année 1 · Je construis sur le web · Toujours en train d'apprendre`,
+    pwd:    () => { const m={home:'~',about:'~/about',projects:'~/projects',skills:'~/skills',contact:'~/contact'}; return `<span style="color:var(--yellow)">${m[currentTab]||'~'}</span>`; },
+    date:   () => `<span style="color:var(--blue)">${new Date().toDateString()} — ${new Date().toLocaleTimeString()}</span>`,
+    echo:   (a) => a.length ? `<span style="color:var(--white)">${a.map(escHtml).join(' ')}</span>` : '',
+    clear:  () => { termHistory.innerHTML = ''; return null; },
+    cd: (args) => {
+      const raw = (args[0]||'').replace(/^~?\/?/,'').toLowerCase();
+      const map = {'':'home',home:'home',about:'about',projects:'projects',skills:'skills',contact:'contact'};
+      const id  = map[raw];
+      if (!id) return `<span style="color:var(--red)">cd : répertoire introuvable : ${escHtml(args[0]||'')}</span>`;
+      const btn = [...document.querySelectorAll('.nav-btn')].find(b => b.textContent.includes(id));
+      if (btn) switchTab(id, btn);
+      return `<span style="color:var(--comment)">→ <span style="color:var(--blue)">${id}</span></span>`;
+    },
+  };
+
+  function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function runCommand(raw) {
+    const t = raw.trim(); if (!t) return;
+    cmdHistory.unshift(t); histIdx = -1;
+    const [cmd,...args] = t.split(/\s+/);
+    const fn = COMMANDS[cmd.toLowerCase()];
+    const pm = {home:'~',about:'~/about',projects:'~/projects',skills:'~/skills',contact:'~/contact'};
+    const e  = document.createElement('div'); e.className = 'history-entry';
+    e.innerHTML = `<div class="hist-cmd"><span style="color:var(--green)">antoinio</span><span style="color:var(--white-dim)">@</span><span style="color:var(--blue)">macbook</span><span style="color:var(--white-dim)">:</span><span style="color:var(--yellow)">${pm[currentTab]||'~'}</span><span style="color:var(--green)"> % </span>${escHtml(t)}</div>`;
+    if (fn) { const o = fn(args); if (o !== null && o !== undefined) e.innerHTML += `<div class="hist-out">${o}</div>`; }
+    else      e.innerHTML += `<div class="hist-err">commande introuvable : ${escHtml(cmd)} — essayez <span style="color:var(--green)">help</span></div>`;
+    termHistory.appendChild(e);
+    termHistory.scrollTop = termHistory.scrollHeight;
+  }
+
+  termInput.addEventListener('keydown', e => {
+    if (e.key==='Enter') { runCommand(termInput.value); termInput.value=''; }
+    if (e.key==='ArrowUp')   { e.preventDefault(); if (histIdx<cmdHistory.length-1) histIdx++; termInput.value=cmdHistory[histIdx]||''; }
+    if (e.key==='ArrowDown') { e.preventDefault(); if (histIdx>0) histIdx--; else { histIdx=-1; termInput.value=''; return; } termInput.value=cmdHistory[histIdx]||''; }
+    if (e.key==='Tab') {
+      e.preventDefault();
+      const p = termInput.value.trim().split(/\s+/);
+      if (p.length===2 && p[0].toLowerCase()==='cd') { const m=['home','about','projects','skills','contact'].find(s=>s.startsWith(p[1].toLowerCase())); if(m) termInput.value='cd '+m; }
+      else if (p.length===1) { const m=Object.keys(COMMANDS).find(c=>c.startsWith(p[0].toLowerCase())); if(m) termInput.value=m; }
+    }
+    if (e.key==='l' && e.ctrlKey) { e.preventDefault(); termHistory.innerHTML=''; }
+  });
+
+  document.querySelector('.window').addEventListener('click', e => {
+    if (!e.target.closest('a') && !e.target.closest('.nav-btn')) termInput.focus();
+  });
+
+  document.addEventListener('keydown', e => {
+    if (document.activeElement===termInput) return;
+    if (e.key==='ArrowRight') { current=(current+1)%tabs.length; switchTab(tabs[current],document.querySelectorAll('.nav-btn')[current]); }
+    if (e.key==='ArrowLeft')  { current=(current-1+tabs.length)%tabs.length; switchTab(tabs[current],document.querySelectorAll('.nav-btn')[current]); }
+  });
+
+  const skills = [
+    {name:'HTML',level:75},{name:'CSS',level:70},{name:'JavaScript',level:60},
+    {name:'Python',level:65},{name:'Git',level:55},{name:'CLI / Bash',level:50},
+    {name:'Algorithmes',level:45},{name:'SQL',level:35},
+  ];
+  const grid = document.getElementById('skillsGrid');
+  skills.forEach(s => {
+    grid.innerHTML += `<div class="skill-card"><div class="skill-name">${s.name} <span style="color:var(--comment);font-size:10px;">${s.level}%</span></div><div class="bar-track"><div class="bar-fill" data-level="${s.level}"></div></div></div>`;
+  });
+  let barsAnimated = false;
+  function animateBars() {
+    if (barsAnimated) return; barsAnimated = true;
+    setTimeout(() => document.querySelectorAll('.bar-fill').forEach(b => b.style.width=b.dataset.level+'%'), 80);
+  }
+
+  /* ── TYPING INTRO ── */
+  (function() {
+    const text='whoami', el=document.getElementById('typingText'),
+          cursor=document.getElementById('typingCursor'),
+          content=document.getElementById('homeContent'),
+          prompt=document.getElementById('introPrompt');
+    let i=0;
+    setTimeout(function type() {
+      if (i<=text.length) { el.textContent=text.slice(0,i); i++; setTimeout(type, i===1?300:95); }
+      else {
+        setTimeout(() => {
+          cursor.style.display='none';
+          prompt.style.transition='opacity 0.3s'; prompt.style.opacity='0';
+          setTimeout(() => {
+            prompt.style.display='none';
+            content.style.pointerEvents='auto'; content.style.opacity='1';
+            setTimeout(() => runCommand('help'), 300);
+          }, 320);
+        }, 500);
+      }
+    }, 600);
+  })();
+</script>
+</body>
+</html>
